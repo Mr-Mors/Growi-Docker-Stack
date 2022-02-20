@@ -1,0 +1,165 @@
+version: '3'
+services:
+
+    growi:
+        image: 'weseek/growi'
+        hostname: ${GROWI_URL}
+        container_name: ${COMPOSE_PROJECT_NAME}-web
+        networks:
+            - frontend
+            - backend
+        volumes:
+            - ./growi-data:/data
+#        ports:
+#            - 3000:3000
+        stop_grace_period: 2m
+        restart: unless-stopped
+        depends_on:
+            - mongo
+            - elasticsearch
+        environment:
+            - APP_SITE_URL=${HTTP_MODE}://${GROWI_URL}
+            - DRAWIO_URI=${HTTP_MODE}://${DRAWIO_URL}
+            - PLANTUML_URI=${HTTP_MODE}://${GROWI_URL}/plantuml
+            - BLOCKDIAG_URI=${HTTP_MODE}://${GROWI_URL}/blockdiag
+            - HACKMD_URI=${HTTP_MODE}://${HACKMD_URL}
+            - HACKMD_URI_FOR_SERVER=http://hackmd:3000
+            - MONGO_URI=mongodb://mongo:27017/growi
+            - ELASTICSEARCH_URI=http://elasticsearch:9200/growi
+            - PASSWORD_SEED=changeme
+            # - FILE_UPLOAD=mongodb     # activate this line if you use MongoDB GridFS rather than AWS
+            - FILE_UPLOAD=local         # activate this line if you use local storage of server rather than AWS
+            - MATHJAX=1                         # activate this line if you want to use MathJax
+            # - FORCE_WIKI_MODE='public'        # activate this line to force wiki public mode
+            - FORCE_WIKI_MODE='private'     # activate this line to force wiki private mode
+
+    mongo:
+        image: mongo:4.4
+        container_name: ${COMPOSE_PROJECT_NAME}-mongo
+        networks:
+            - backend
+        volumes:
+            - ./mongo-db:/data/db
+        stop_grace_period: 2m
+        restart: unless-stopped
+
+    elasticsearch:
+        build:
+            context: ./elasticsearch
+            dockerfile: ./Dockerfile
+        container_name: ${COMPOSE_PROJECT_NAME}-elasticsearch
+        networks:
+            - backend
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+            - elasticsearch-data:/usr/share/elasticsearch/data
+            - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+        stop_grace_period: 2m
+        restart: unless-stopped
+        environment:
+            - bootstrap.memory_lock=true
+            - "ES_JAVA_OPTS=-Xms256m -Xmx256m"    # increase amount if you have enough memory
+            - LOG4J_FORMAT_MSG_NO_LOOKUPS=true # CVE-2021-44228 mitigation for Elasticsearch <= 6.8.20/7.16.0
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+
+
+    hackmd:
+        build:
+            context: ./hackmd
+        container_name: ${COMPOSE_PROJECT_NAME}-hackmd
+        networks:
+            - frontend
+            - backend
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+#        ports:
+#            - 3100:3000
+        stop_grace_period: 2m
+        restart: unless-stopped
+        depends_on:
+            - mariadb
+        environment:
+            GROWI_URI: ${HTTP_MODE}://${GROWI_URL}
+            CMD_DOMAIN: ${HACKMD_URL}
+            CMD_URL_ADDPORT: 'false'
+            CMD_DB_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
+            CMD_USECDN: 'false'
+            CMD_CSP_ENABLE: 'false'
+        depends_on:
+            - mariadb
+
+
+    mariadb:
+        image: mariadb:10.3
+        container_name: ${COMPOSE_PROJECT_NAME}-mariadb
+        networks:
+            - backend
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+            - mariadb-data:/var/lib/mysql
+        stop_grace_period: 2m
+        restart: unless-stopped
+        command: mysqld --character-set-server=utf8 --collation-server=utf8_general_ci
+        environment:
+            MYSQL_USER: ${MYSQL_USER}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+            MYSQL_RANDOM_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+    drawio:
+        image: jgraph/drawio
+        container_name: ${COMPOSE_PROJECT_NAME}-drawio
+        networks:
+            - frontend
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+        #ports:
+        #  - 8080:8080
+        stop_grace_period: 0m
+        restart: unless-stopped
+
+    plantuml:
+        image: plantuml/plantuml-server:jetty
+        container_name: ${COMPOSE_PROJECT_NAME}-plantuml
+        networks:
+            - frontend
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+        #ports:
+        #  - 8080:8080
+        stop_grace_period: 0m
+        restart: unless-stopped
+        environment:
+            - BASE_URL=plantuml
+
+    blockdiag:
+        image: kaishuu0123/blockdiag-api
+        container_name: ${COMPOSE_PROJECT_NAME}-blockdiag
+        networks:
+            - frontend
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+        #ports:
+        #  - 8000:8000
+        stop_grace_period: 0m
+        restart: unless-stopped
+        environment:
+            - BLOCKDIAG_API_SUBDIR=/blockdiag
+
+volumes:
+    elasticsearch-data:
+    mariadb-data:
+
+networks:
+    frontend:
+        external: true
+    backend:

@@ -10,8 +10,8 @@ services:
             - backend
         volumes:
             - ./growi-data:/data
-#        ports:
-#            - 3000:3000
+        #ports:
+        #    - 3000:3000
         stop_grace_period: 2m
         restart: unless-stopped
         depends_on:
@@ -77,8 +77,8 @@ services:
         volumes:
             - "/etc/timezone:/etc/timezone:ro"
             - "/etc/localtime:/etc/localtime:ro"
-#        ports:
-#            - 3100:3000
+        #ports:
+        #    - 3100:3000
         stop_grace_period: 2m
         restart: unless-stopped
         depends_on:
@@ -90,8 +90,6 @@ services:
             CMD_DB_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
             CMD_USECDN: 'false'
             CMD_CSP_ENABLE: 'false'
-        depends_on:
-            - mariadb
 
 
     mariadb:

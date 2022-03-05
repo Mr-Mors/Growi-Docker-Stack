@@ -32,7 +32,6 @@ services:
             - MATHJAX=1                         # activate this line if you want to use MathJax
             # - FORCE_WIKI_MODE='public'        # activate this line to force wiki public mode
             - FORCE_WIKI_MODE='private'     # activate this line to force wiki private mode
-
     mongo:
         image: mongo:4.4
         container_name: ${COMPOSE_PROJECT_NAME}-mongo
@@ -90,8 +89,6 @@ services:
             CMD_DB_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
             CMD_USECDN: 'false'
             CMD_CSP_ENABLE: 'false'
-
-
     mariadb:
         image: mariadb:10.3
         container_name: ${COMPOSE_PROJECT_NAME}-mariadb
